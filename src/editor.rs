@@ -22,6 +22,23 @@ pub fn proccess_character() -> Result<(), std::io::Error> {
   Ok(())
 }
 
+pub fn draw_rows() -> io::Result<()> {
+  for _ in 0..24 {
+    stdout().write_all(b"~\r\n")?;
+  }
+
+  Ok(())
+}
+
+pub fn clear_screen() -> io::Result<()> {
+  stdout().write_all(b"\x1b[2J")?;
+  stdout().write_all(b"\x1b[H")?;
+
+  draw_rows()?;
+  stdout().write_all(b"\x1b[H")?;
+  Ok(())
+}
+
 fn read_character() -> Result<char, std::io::Error> {
   let mut char_buffer = [0; 1];
 
