@@ -21,6 +21,9 @@ impl TermiosConfig {
         term_config.c_iflag &= !(ICRNL | IXON);
         term_config.c_oflag &= !(OPOST);
         term_config.c_lflag &= !(ECHO | IEXTEN | ICANON | ISIG);
+
+        term_config.c_cc[VMIN] = 0;
+        term_config.c_cc[VTIME] = 1;
         // Handle result type proper
         tcsetattr(0, TCSAFLUSH, &term_config).unwrap();
     }
