@@ -50,11 +50,12 @@ pub fn get_rows_and_cols() -> std::io::Result<CursorPos> {
 }
 
 enum PosDelimiter {
-  Start(char),
-  FstPos(char),
-  SndPos(char),
-  End(char),
+  FstPos,
+  SndPos,
+  End,
 }
+
+type PostionPart = Option<PosDelimiter>;
 
 pub struct CursorPos(pub i64, pub i64);
 
@@ -72,7 +73,7 @@ fn get_cursor_postion() -> Result<CursorPos, std::io::Error> {
 }
 
 fn parse_cursor_position_chars(cursor_pos: Vec<u8>) -> CursorPos {
-  let mut current_symbol: PosDelimiter = PosDelimiter::Start('\0');
+  let mut current_symbol: PostionPart = None;
   let mut col = String::new();
   let mut row = String::new();
 
@@ -80,14 +81,16 @@ fn parse_cursor_position_chars(cursor_pos: Vec<u8>) -> CursorPos {
     let character_char = character as char;
 
     match character_char {
-      '[' => current_symbol = PosDelimiter::FstPos(character_char),
-      ';' => current_symbol = PosDelimiter::SndPos(character_char),
-      'R' => current_symbol = PosDelimiter::End(character_char),
-      character_char if character_char.is_ascii_digit() => match current_symbol {
-        PosDelimiter::FstPos(_) => col.push(character_char),
-        PosDelimiter::SndPos(_) => row.push(character_char),
-        PosDelimiter::Start(_) => continue,
-        PosDelimiter::End(_) => break,
+      '[' => current_symbol = PostionPart::Some(PosDelimiter::FstPos),
+      ';' => current_symbol = PostionPart::Some(PosDelimiter::SndPos),
+      'R' => current_symbol = PostionPart::Some(PosDelimiter::End),
+      character_char if character_char.is_ascii_digit() => match &current_symbol {
+        Some(curr) => match curr {
+          PosDelimiter::FstPos => col.push(character_char),
+          PosDelimiter::SndPos => row.push(character_char),
+          PosDelimiter::End => break,
+        },
+        None => continue,
       },
       _ => continue,
     }
