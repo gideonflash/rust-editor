@@ -8,13 +8,26 @@ const CURSOR_POSITION_TOP_LEFT: &'static [u8; 3] = b"\x1b[H";
 const CURSOR_POSTION_BOTTOM_RIGHT: &'static [u8; 12] = b"\x1b[999C\x1b[999B";
 const CURSOR_POSTION: &'static [u8; 4] = b"\x1b[6n";
 
-pub fn clear_screen() -> io::Result<()> {
-  stdout().write_all(CLEAR_SCREEN)?;
-  stdout().write_all(CURSOR_POSITION_TOP_LEFT)?;
+pub struct Editor {
+  rows_cols: CursorPos,
+}
 
-  draw_rows()?;
-  stdout().write_all(CURSOR_POSITION_TOP_LEFT)?;
-  Ok(())
+impl Editor {
+  pub fn new() -> std::io::Result<Editor> {
+    let pos = get_rows_and_cols()?;
+
+    Ok(Editor { rows_cols: pos })
+  }
+
+  pub fn clear_screen(&self) -> io::Result<()> {
+    stdout().write_all(CLEAR_SCREEN)?;
+    stdout().write_all(CURSOR_POSITION_TOP_LEFT)?;
+
+    draw_rows(&self.rows_cols)?;
+    stdout().write_all(CURSOR_POSITION_TOP_LEFT)?;
+
+    Ok(())
+  }
 }
 
 pub fn proccess_character() -> Result<(), std::io::Error> {
@@ -100,8 +113,8 @@ fn parse_cursor_position_chars(cursor_pos: String) -> CursorPos {
   CursorPos(col, row)
 }
 
-fn draw_rows() -> io::Result<()> {
-  for _ in 0..24 {
+fn draw_rows(pos: &CursorPos) -> io::Result<()> {
+  for _ in 0..pos.1 {
     stdout().write_all(b"~\r\n")?;
   }
 
