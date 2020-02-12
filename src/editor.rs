@@ -64,30 +64,28 @@ fn get_cursor_postion() -> Result<CursorPos, std::io::Error> {
   stdout().write_all(CURSOR_POSTION)?;
   stdout().flush()?;
 
-  let mut cursor_pos = Vec::new();
+  let mut cursor_pos = String::new();
 
   // Read cursor position characters
-  stdin().read_to_end(&mut cursor_pos)?;
+  stdin().read_to_string(&mut cursor_pos)?;
 
   Ok(parse_cursor_position_chars(cursor_pos))
 }
 
-fn parse_cursor_position_chars(cursor_pos: Vec<u8>) -> CursorPos {
+fn parse_cursor_position_chars(cursor_pos: String) -> CursorPos {
   let mut current_symbol: PostionPart = None;
   let mut col = String::new();
   let mut row = String::new();
 
-  for character in cursor_pos {
-    let character_char = character as char;
-
-    match character_char {
+  for character in cursor_pos.chars() {
+    match character {
       '[' => current_symbol = PostionPart::Some(PosDelimiter::FstPos),
       ';' => current_symbol = PostionPart::Some(PosDelimiter::SndPos),
       'R' => current_symbol = PostionPart::Some(PosDelimiter::End),
-      character_char if character_char.is_ascii_digit() => match &current_symbol {
+      character if character.is_ascii_digit() => match &current_symbol {
         Some(curr) => match curr {
-          PosDelimiter::FstPos => col.push(character_char),
-          PosDelimiter::SndPos => row.push(character_char),
+          PosDelimiter::FstPos => col.push(character),
+          PosDelimiter::SndPos => row.push(character),
           PosDelimiter::End => break,
         },
         None => continue,
@@ -128,7 +126,7 @@ mod tests {
     // [123;44R -> CursorPos(123, 44)
     // [0;0R -> CursorPos(0, 0)
     // [re;thR -> ?
-    let pos_bytes: Vec<u8> = "[123;44R".bytes().collect();
+    let pos_bytes = String::from("22[123;44R");
     let parsed_position = parse_cursor_position_chars(pos_bytes);
 
     assert_eq!(parsed_position.1, 44);
