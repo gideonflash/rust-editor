@@ -8,6 +8,10 @@ const CURSOR_POSITION_TOP_LEFT: &'static [u8; 3] = b"\x1b[H";
 const CURSOR_POSTION_BOTTOM_RIGHT: &'static [u8; 12] = b"\x1b[999C\x1b[999B";
 const CURSOR_POSTION: &'static [u8; 4] = b"\x1b[6n";
 
+type TerminalChars = Vec<char>;
+
+pub struct CursorPos(pub i64, pub i64);
+
 pub struct Editor {
   rows_cols: CursorPos,
 }
@@ -62,16 +66,6 @@ pub fn get_rows_and_cols() -> std::io::Result<CursorPos> {
   Ok(cursor_position)
 }
 
-enum PosDelimiter {
-  FstPos,
-  SndPos,
-  End,
-}
-
-type PostionPart = Option<PosDelimiter>;
-
-pub struct CursorPos(pub i64, pub i64);
-
 fn get_cursor_postion() -> Result<CursorPos, std::io::Error> {
   // Query cursor postion
   stdout().write_all(CURSOR_POSTION)?;
@@ -82,35 +76,35 @@ fn get_cursor_postion() -> Result<CursorPos, std::io::Error> {
   // Read cursor position characters
   stdin().read_to_string(&mut cursor_pos)?;
 
-  Ok(parse_cursor_position_chars(cursor_pos))
+  Ok(parse_cursor_position_report(cursor_pos))
 }
 
-fn parse_cursor_position_chars(cursor_pos: String) -> CursorPos {
-  let mut current_symbol: PostionPart = None;
-  let mut col = String::new();
-  let mut row = String::new();
+fn parse_cursor_position_report(cursor_pos: String) -> CursorPos {
+  let first = index_at('[', &cursor_pos);
+  let second = index_at(';', &cursor_pos);
+  let end = index_at('R', &cursor_pos);
 
-  for character in cursor_pos.chars() {
-    match character {
-      '[' => current_symbol = PostionPart::Some(PosDelimiter::FstPos),
-      ';' => current_symbol = PostionPart::Some(PosDelimiter::SndPos),
-      'R' => current_symbol = PostionPart::Some(PosDelimiter::End),
-      character if character.is_ascii_digit() => match &current_symbol {
-        Some(curr) => match curr {
-          PosDelimiter::FstPos => col.push(character),
-          PosDelimiter::SndPos => row.push(character),
-          PosDelimiter::End => break,
-        },
-        None => continue,
-      },
-      _ => continue,
-    }
-  }
+  let as_vector: TerminalChars = cursor_pos.chars().collect();
 
-  let col: i64 = col.parse().unwrap();
-  let row: i64 = row.parse().unwrap();
+  let col = parse_pos(&as_vector[first + 1..second]);
+  let row = parse_pos(&as_vector[second + 1..end]);
 
   CursorPos(col, row)
+}
+
+fn index_at(at: char, collection: &String) -> usize {
+  collection.char_indices().find(|v| v.1 == at).unwrap().0
+}
+
+fn parse_pos(range: &[char]) -> i64 {
+  range
+    .iter()
+    .fold(String::from(""), |mut acc, v| {
+      acc.push(*v);
+      acc
+    })
+    .parse()
+    .unwrap()
 }
 
 fn draw_rows(pos: &CursorPos) -> io::Result<()> {
@@ -140,8 +134,9 @@ mod tests {
     // [0;0R -> CursorPos(0, 0)
     // [re;thR -> ?
     let pos_bytes = String::from("22[123;44R");
-    let parsed_position = parse_cursor_position_chars(pos_bytes);
+    let parsed_position = parse_cursor_position_report(pos_bytes);
 
     assert_eq!(parsed_position.1, 44);
+    assert_eq!(parsed_position.0, 123);
   }
 }
