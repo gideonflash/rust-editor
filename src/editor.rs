@@ -18,28 +18,26 @@ pub struct Editor {
 }
 
 impl Editor {
-    pub fn new() -> std::io::Result<Editor> {
-        let pos = get_rows_and_cols()?;
-
-        Ok(Editor {
-            rows_cols: pos,
+    pub fn new() -> io::Result<Self> {
+        let editor = Editor {
+            rows_cols: CursorPos(0, 0),
             buffer: Vec::new(),
-        })
+        };
+
+        Ok(get_rows_and_cols(editor)?)
     }
 
-    pub fn append_to_buffer(&mut self, c: &'static str) {
-        for character in c.bytes() {
-            self.buffer.push(character)
-        }
+    pub fn append_to_buffer(&mut self, c: u8) {
+        self.buffer.push(c)
     }
 
     pub fn write(&self) -> io::Result<()> {
-        stdout().write(self.buffer.as_slice())?;
-
+        stdout().write_all(self.buffer.as_slice())?;
+        stdout().flush()?;
         Ok(())
     }
 
-    pub fn clear_screen(&self) -> io::Result<()> {
+    pub fn draw_screen(&self) -> io::Result<()> {
         stdout().write_all(CLEAR_SCREEN)?;
         stdout().write_all(CURSOR_POSITION_TOP_LEFT)?;
 
@@ -50,11 +48,9 @@ impl Editor {
     }
 }
 
-pub fn proccess_character() -> Result<(), std::io::Error> {
+pub fn proccess_character(mut editor: Editor) -> Result<(), std::io::Error> {
     loop {
-        // Handle error kind EOF
-        let key_character = read_character().unwrap_or('\0' as char);
-        let as_ascii_code = key_character as i8;
+        let key_character = read_character().unwrap_or('\0');
 
         match key_character {
             'q' => {
@@ -63,26 +59,28 @@ pub fn proccess_character() -> Result<(), std::io::Error> {
                 break;
             }
             key_character if key_character != '\0' => {
-                println!(" {}, code: {}\r", key_character, as_ascii_code)
+                editor.append_to_buffer(key_character as u8);
             }
             _ => continue,
         };
+
+        editor.draw_screen()?;
+        editor.write()?
     }
 
     Ok(())
 }
 
-pub fn get_rows_and_cols() -> std::io::Result<CursorPos> {
-    stdout().write_all(CURSOR_POSTION_BOTTOM_RIGHT)?;
-    stdout().flush()?;
-
+fn get_rows_and_cols(mut editor: Editor) -> std::io::Result<Editor> {
     // Get cursor position
     let cursor_position = get_cursor_postion()?;
 
-    Ok(cursor_position)
+    editor.rows_cols = cursor_position;
+    Ok(editor)
 }
 
 fn get_cursor_postion() -> Result<CursorPos, std::io::Error> {
+    stdout().write_all(CURSOR_POSTION_BOTTOM_RIGHT)?;
     // Query cursor postion
     stdout().write_all(CURSOR_POSTION)?;
     stdout().flush()?;

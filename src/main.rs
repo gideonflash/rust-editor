@@ -9,9 +9,9 @@ fn main() -> io::Result<()> {
     term_config.enable_raw_mode();
 
     let editor = Editor::new()?;
-    editor.clear_screen()?;
+    editor.draw_screen()?;
 
-    proccess_character()?;
+    proccess_character(editor)?;
 
     term_config.disable_raw_mode();
     Ok(())
